@@ -1,0 +1,15 @@
+This sample knowledge-base document is intentionally small so the scaffold stays cheap to deploy.
+
+System summary:
+- CloudFront serves the HTML application from a private S3 bucket.
+- The same CloudFront distribution forwards /api/* requests to API Gateway.
+- A WAF web ACL protects the CloudFront ingress.
+- A CloudFront Function enforces basic auth before traffic reaches either the static site or the API.
+- API Gateway invokes Python Lambda functions for chat and retrieval endpoints.
+- The chat Lambda uses Bedrock RetrieveAndGenerate against a Bedrock Knowledge Base.
+- The knowledge base reads source documents from S3 and stores embeddings in S3 Vectors.
+
+Operational guidance:
+- Keep knowledge-base documents concise and well-structured.
+- After changing documents, upload them through Terraform apply and then start a Bedrock ingestion job.
+- Use the search endpoint when you need to inspect raw retrieval results before tuning prompts.

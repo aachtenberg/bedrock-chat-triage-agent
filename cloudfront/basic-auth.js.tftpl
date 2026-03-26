@@ -1,0 +1,37 @@
+function redirectToLogin() {
+  return {
+    statusCode: 302,
+    statusDescription: 'Found',
+    headers: {
+      location: { value: '/login' },
+      'cache-control': { value: 'no-store' }
+    }
+  };
+}
+
+async function handler(event) {
+  var request = event.request;
+  var uri = request.uri;
+
+  // Let the login page through without credentials, rewriting URI for S3
+  if (uri === '/login' || uri === '/login.html') {
+    request.uri = '/login.html';
+    return request;
+  }
+
+  var expected = 'Basic ${basic_auth_token}';
+  var headers  = request.headers || {};
+  var cookies  = request.cookies || {};
+
+  var authHeader = headers.authorization;
+  var authCookie = cookies['_auth'];
+
+  var isValid = (authHeader && authHeader.value === expected) ||
+                (authCookie && ('Basic ' + authCookie.value) === expected);
+
+  if (!isValid) {
+    return redirectToLogin();
+  }
+
+  return request;
+}

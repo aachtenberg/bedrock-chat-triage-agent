@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bedrock Knowledge Chat</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --panel: rgba(255, 252, 247, 0.86);
+      --panel-strong: #fffaf2;
+      --ink: #1f2933;
+      --muted: #5d6a72;
+      --line: rgba(31, 41, 51, 0.1);
+      --accent: #0d5c63;
+      --accent-soft: #d5ebe6;
+      --user: #174e63;
+      --assistant: #ffffff;
+      --shadow: 0 24px 60px rgba(23, 40, 53, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(13, 92, 99, 0.18), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(199, 138, 69, 0.18), transparent 28%),
+        linear-gradient(180deg, #f7f1e7 0%, #ece5d8 100%);
+      padding: 32px 20px;
+    }
+
+    .shell {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .eyebrow {
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 2.4rem;
+      line-height: 1;
+    }
+
+    .sidebar p,
+    .sidebar li,
+    .hint,
+    .source,
+    .meta {
+      color: var(--muted);
+    }
+
+    .sidebar ul {
+      padding-left: 18px;
+      margin: 0;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .main {
+      min-height: 80vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+    }
+
+    .main-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 24px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .main-header h2 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .status {
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #eef6f2;
+      color: #24654d;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .messages {
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      max-width: 84%;
+      border-radius: 22px;
+      padding: 16px 18px;
+      line-height: 1.55;
+      animation: rise 180ms ease-out;
+      white-space: pre-wrap;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: var(--user);
+      color: #f5fafc;
+      border-bottom-right-radius: 8px;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+      background: var(--assistant);
+      border: 1px solid var(--line);
+      border-bottom-left-radius: 8px;
+    }
+
+    .message.loading {
+      font-style: italic;
+      color: var(--muted);
+    }
+
+    .sources {
+      margin-top: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .source {
+      background: #f6f5f0;
+      border: 1px solid rgba(31, 41, 51, 0.08);
+      border-radius: 16px;
+      padding: 12px;
+      font-size: 0.88rem;
+    }
+
+    .source strong {
+      color: var(--ink);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .composer {
+      padding: 18px 24px 24px;
+      border-top: 1px solid var(--line);
+      display: grid;
+      gap: 12px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    .mode,
+    .ghost {
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fffdf9;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    .mode.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      padding: 16px;
+      color: var(--ink);
+    }
+
+    textarea:focus {
+      outline: 2px solid rgba(13, 92, 99, 0.18);
+      border-color: rgba(13, 92, 99, 0.38);
+    }
+
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .hint {
+      font-size: 0.9rem;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .main {
+        min-height: 70vh;
+      }
+
+      .message {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="card sidebar">
+      <div>
+        <div class="eyebrow">AWS Bedrock</div>
+        <h1>Knowledge Chat</h1>
+      </div>
+      <p>Simple, low-ops interface for querying an S3-backed Bedrock Knowledge Base through CloudFront, API Gateway, and Python Lambdas.</p>
+      <div class="chip-row">
+        <span class="chip">CloudFront</span>
+        <span class="chip">Basic Auth</span>
+        <span class="chip">WAF</span>
+        <span class="chip">Sonnet 4.5</span>
+      </div>
+      <div>
+        <div class="eyebrow">Modes</div>
+        <ul>
+          <li>Ask: retrieve context and generate an answer with citations.</li>
+          <li>Search: inspect the top matching passages before asking.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="eyebrow">Notes</div>
+        <p class="meta">Knowledge-base ingestion is separate from Terraform state. Re-run ingestion after changing files under the knowledge-base folder.</p>
+      </div>
+    </aside>
+
+    <main class="card main">
+      <div class="main-header">
+        <h2>Console</h2>
+        <div class="header-actions">
+          <button class="ghost" id="signout" type="button">Sign out</button>
+          <div class="status" id="status">Ready</div>
+        </div>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="message assistant">
+          Start with a question about the uploaded documents, or switch to Search to inspect the retrieved passages directly.
+        </div>
+      </div>
+
+      <div class="composer">
+        <div class="toolbar">
+          <button class="mode active" id="mode-chat" type="button">Ask Sonnet</button>
+          <button class="mode" id="mode-search" type="button">Search KB</button>
+          <button class="ghost" id="clear" type="button">Clear</button>
+        </div>
+        <textarea id="input" placeholder="Ask a grounded question about your knowledge base."></textarea>
+        <div class="actions">
+          <div class="hint" id="hint">The app calls the same CloudFront host under /api, so WAF and auth cover both the site and the backend.</div>
+          <button class="primary" id="send" type="button">Send</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Redirect to login if no auth cookie present
+    (function () {
+      var hasCookie = document.cookie.split(';').some(function (c) {
+        return c.trim().startsWith('_auth=');
+      });
+      if (!hasCookie) {
+        window.location.replace('/login');
+      }
+    }());
+
+    const state = {
+      mode: 'chat',
+      sessionId: null,
+      busy: false,
+    };
+
+    const messages = document.getElementById('messages');
+    const input = document.getElementById('input');
+    const send = document.getElementById('send');
+    const clear = document.getElementById('clear');
+    const signout = document.getElementById('signout');
+    const status = document.getElementById('status');
+    const hint = document.getElementById('hint');
+    const modeChat = document.getElementById('mode-chat');
+    const modeSearch = document.getElementById('mode-search');
+
+    function setMode(mode) {
+      state.mode = mode;
+      modeChat.classList.toggle('active', mode === 'chat');
+      modeSearch.classList.toggle('active', mode === 'search');
+      hint.textContent = mode === 'chat'
+        ? 'Ask grounded questions and get an answer with supporting citations.'
+        : 'Inspect retrieved passages without generation to validate your knowledge base coverage.';
+      input.placeholder = mode === 'chat'
+        ? 'Ask a grounded question about your knowledge base.'
+        : 'Search for exact passages or topics in the knowledge base.';
+    }
+
+    function setStatus(text) {
+      status.textContent = text;
+    }
+
+    function addMessage(kind, content, sources = []) {
+      const node = document.createElement('div');
+      node.className = `message ${kind}`;
+      node.textContent = content;
+
+      if (sources.length) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'sources';
+
+        sources.forEach((source) => {
+          const card = document.createElement('div');
+          card.className = 'source';
+
+          const title = document.createElement('strong');
+          title.textContent = source.uri || 'Retrieved source';
+          card.appendChild(title);
+
+          if (typeof source.score === 'number') {
+            const score = document.createElement('div');
+            score.textContent = `Score: ${source.score.toFixed(4)}`;
+            card.appendChild(score);
+          }
+
+          const snippet = document.createElement('div');
+          snippet.textContent = source.snippet || source.text || '';
+          card.appendChild(snippet);
+
+          wrapper.appendChild(card);
+        });
+
+        node.appendChild(wrapper);
+      }
+
+      messages.appendChild(node);
+      messages.scrollTop = messages.scrollHeight;
+      return node;
+    }
+
+    async function sendRequest() {
+      const value = input.value.trim();
+      if (!value || state.busy) {
+        return;
+      }
+
+      state.busy = true;
+      send.disabled = true;
+      setStatus(state.mode === 'chat' ? 'Asking' : 'Searching');
+
+      addMessage('user', value);
+      input.value = '';
+
+      const loading = addMessage('assistant loading', state.mode === 'chat' ? 'Thinking...' : 'Searching...');
+
+      const endpoint = state.mode === 'chat' ? '/api/chat' : '/api/search';
+      const payload = state.mode === 'chat'
+        ? { message: value, session_id: state.sessionId }
+        : { query: value };
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        loading.remove();
+
+        if (!response.ok) {
+          addMessage('assistant', data.error || 'Request failed.');
+        } else if (state.mode === 'chat') {
+          state.sessionId = data.session_id || state.sessionId;
+          addMessage('assistant', data.answer || 'No answer returned.', data.sources || []);
+        } else {
+          const results = data.results || [];
+          const text = results.length
+            ? `Found ${results.length} matching passages.`
+            : 'No matching passages found.';
+          addMessage('assistant', text, results);
+        }
+      } catch (error) {
+        loading.remove();
+        addMessage('assistant', `Request failed: ${error.message}`);
+      } finally {
+        state.busy = false;
+        send.disabled = false;
+        setStatus('Ready');
+      }
+    }
+
+    function signOut() {
+      document.cookie = '_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Strict';
+      window.location.replace('/login');
+    }
+
+    modeChat.addEventListener('click', () => setMode('chat'));
+    modeSearch.addEventListener('click', () => setMode('search'));
+    clear.addEventListener('click', () => {
+      state.sessionId = null;
+      messages.innerHTML = '';
+      addMessage('assistant', 'Conversation cleared.');
+    });
+    signout.addEventListener('click', signOut);
+    send.addEventListener('click', sendRequest);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+        sendRequest();
+      }
+    });
+  </script>
+</body>
+</html>

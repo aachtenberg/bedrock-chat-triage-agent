@@ -1,0 +1,9 @@
+aws_region          = "us-east-1"
+project_name        = "bedrock-chat"
+environment         = "dev"
+bedrock_model_id    = "anthropic.claude-sonnet-4-5-20250929-v1:0"
+# For Sonnet 4.5, set this to an inference profile ARN if your account does not support on-demand use for the model.
+# bedrock_agent_foundation_model = "arn:aws:bedrock:us-east-1:123456789012:inference-profile/your-profile-id"
+basic_auth_secret_name = "bedrock-chat-basic-auth"
+basic_auth_username    = "admin"
+basic_auth_password    = "replace-me"

@@ -1,0 +1,82 @@
+// CloudFront Function (viewer-request) — HMAC-SHA256 session cookie validation.
+// Runtime: cloudfront-js-2.0 (async handler, crypto.subtle available).
+//
+// Session cookie format: {32-hex-nonce}.{64-hex-hmac-sha256}
+// Issued by the /api/callback Lambda using the same SESSION_SECRET injected here.
+
+var SESSION_SECRET = '${session_secret}';
+
+function redirectToLogin(uri) {
+  var redirect = (uri && uri !== '/') ? '?redirect=' + encodeURIComponent(uri) : '';
+  return {
+    statusCode: 302,
+    statusDescription: 'Found',
+    headers: {
+      location: { value: '/login' + redirect },
+      'cache-control': { value: 'no-store' }
+    }
+  };
+}
+
+async function handler(event) {
+  var request = event.request;
+  var uri = request.uri || '/';
+
+  // Pass auth endpoints and the login page through without checking the session.
+  if (uri === '/login' || uri === '/login.html' ||
+      uri.startsWith('/api/login') || uri.startsWith('/api/callback')) {
+    if (uri === '/login') request.uri = '/login.html';
+    return request;
+  }
+
+  var cookies = request.cookies || {};
+  var authCookie = cookies['_auth'];
+  if (!authCookie || !authCookie.value) {
+    return redirectToLogin(uri);
+  }
+
+  var dotIdx = authCookie.value.lastIndexOf('.');
+  if (dotIdx < 1) {
+    return redirectToLogin(uri);
+  }
+
+  var nonce   = authCookie.value.substring(0, dotIdx);
+  var hmacHex = authCookie.value.substring(dotIdx + 1);
+
+  // HMAC-SHA256 produces 32 bytes = 64 hex chars.
+  if (!nonce || hmacHex.length !== 64) {
+    return redirectToLogin(uri);
+  }
+
+  try {
+    var encoder = new TextEncoder();
+
+    var key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(SESSION_SECRET),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    var hmacBytes = new Uint8Array(32);
+    for (var i = 0; i < 32; i++) {
+      hmacBytes[i] = parseInt(hmacHex.substring(i * 2, i * 2 + 2), 16);
+    }
+
+    var valid = await crypto.subtle.verify(
+      'HMAC',
+      key,
+      hmacBytes,
+      encoder.encode(nonce)
+    );
+
+    if (!valid) {
+      return redirectToLogin(uri);
+    }
+  } catch (_) {
+    return redirectToLogin(uri);
+  }
+
+  return request;
+}

@@ -39,50 +39,33 @@ variable "embedding_dimensions" {
   default     = 1024
 }
 
-variable "basic_auth_secret_name" {
-  description = "Name of the AWS Secrets Manager secret Terraform will create for CloudFront basic-auth credentials."
+variable "cognito_oidc_client_id" {
+  description = "Client ID of the Microsoft Azure app registration used as the Cognito identity provider."
   type        = string
 }
 
-variable "basic_auth_username" {
-  description = "Username stored in the managed Secrets Manager secret for CloudFront basic auth."
-  type        = string
-}
-
-variable "basic_auth_password" {
-  description = "Password stored in the managed Secrets Manager secret for CloudFront basic auth."
+variable "cognito_oidc_client_secret" {
+  description = "Client secret of the Microsoft Azure app registration."
   type        = string
   sensitive   = true
 }
 
-variable "basic_auth_secret_username_key" {
-  description = "JSON key inside the secret string that contains the basic-auth username."
+variable "cognito_oidc_issuer" {
+  description = "OIDC issuer for the Microsoft identity provider. The /common/ tenant accepts personal and work accounts. For BMO production, replace with the specific Entra ID tenant URL."
   type        = string
-  default     = "username"
+  default     = "https://login.microsoftonline.com/common/v2.0"
 }
 
-variable "basic_auth_secret_password_key" {
-  description = "JSON key inside the secret string that contains the basic-auth password."
+variable "cloudfront_domain" {
+  description = "CloudFront domain from a previous apply (e.g. abc123.cloudfront.net, without https://). Leave empty on first apply. After first apply, set this to the cloudfront_url output value and re-apply to register the real callback URL with Cognito."
   type        = string
-  default     = "password"
+  default     = ""
 }
 
-variable "basic_auth_realm" {
-  description = "Realm shown in the browser basic auth prompt. Used when the secret does not also provide a realm key."
-  type        = string
-  default     = "Bedrock Chat"
-}
-
-variable "basic_auth_secret_realm_key" {
-  description = "Optional JSON key inside the secret string that contains the browser realm override."
-  type        = string
-  default     = "realm"
-}
-
-variable "basic_auth_secret_recovery_window_in_days" {
-  description = "Recovery window for the managed Secrets Manager secret. Set to 0 for force delete in ephemeral environments."
+variable "session_ttl_seconds" {
+  description = "How long a session cookie (and Cognito access token) remains valid after login."
   type        = number
-  default     = 7
+  default     = 3600
 }
 
 variable "force_destroy_buckets" {

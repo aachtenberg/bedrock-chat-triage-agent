@@ -10,6 +10,12 @@ data "archive_file" "search" {
   output_path = "${path.module}/search_lambda.zip"
 }
 
+data "archive_file" "auth" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/auth"
+  output_path = "${path.module}/auth_lambda.zip"
+}
+
 resource "aws_cloudwatch_log_group" "chat" {
   name              = "/aws/lambda/${local.name_prefix}-chat"
   retention_in_days = 14
@@ -63,4 +69,33 @@ resource "aws_lambda_function" "search" {
   }
 
   depends_on = [aws_cloudwatch_log_group.search]
+}
+
+resource "aws_cloudwatch_log_group" "auth" {
+  name              = "/aws/lambda/${local.name_prefix}-auth"
+  retention_in_days = 14
+}
+
+resource "aws_lambda_function" "auth" {
+  function_name    = "${local.name_prefix}-auth"
+  filename         = data.archive_file.auth.output_path
+  source_code_hash = data.archive_file.auth.output_base64sha256
+  role             = aws_iam_role.lambda.arn
+  handler          = "app.handler"
+  runtime          = "python3.12"
+  timeout          = 30
+  memory_size      = 256
+
+  environment {
+    variables = {
+      COGNITO_CLIENT_ID         = aws_cognito_user_pool_client.app.id
+      COGNITO_CLIENT_SECRET     = aws_cognito_user_pool_client.app.client_secret
+      COGNITO_DOMAIN            = "${aws_cognito_user_pool_domain.app.domain}.auth.${var.aws_region}.amazoncognito.com"
+      COGNITO_IDENTITY_PROVIDER = "Microsoft"
+      SESSION_SECRET            = local.session_secret
+      SESSION_TTL_SECONDS       = tostring(var.session_ttl_seconds)
+    }
+  }
+
+  depends_on = [aws_cloudwatch_log_group.auth]
 }

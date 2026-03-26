@@ -8,16 +8,15 @@ resource "aws_cloudfront_origin_access_control" "web" {
   signing_protocol                  = "sigv4"
 }
 
-resource "aws_cloudfront_function" "basic_auth" {
+resource "aws_cloudfront_function" "auth" {
   provider = aws.us_east_1
 
-  name    = "${local.name_prefix}-basic-auth"
+  name    = "${local.name_prefix}-auth"
   runtime = "cloudfront-js-2.0"
   publish = true
-  comment = "Viewer-request basic auth gate for the site and API."
-  code = templatefile("${path.module}/cloudfront/basic-auth.js.tftpl", {
-    basic_auth_token = local.basic_auth_token
-    basic_auth_realm = local.basic_auth_realm
+  comment = "Viewer-request HMAC session validation. Passes /api/login and /api/callback through unauthenticated."
+  code = templatefile("${path.module}/cloudfront/auth.js.tftpl", {
+    session_secret = local.session_secret
   })
 }
 
@@ -58,7 +57,7 @@ resource "aws_cloudfront_distribution" "app" {
 
     function_association {
       event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.basic_auth.arn
+      function_arn = aws_cloudfront_function.auth.arn
     }
   }
 
@@ -74,7 +73,7 @@ resource "aws_cloudfront_distribution" "app" {
 
     function_association {
       event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.basic_auth.arn
+      function_arn = aws_cloudfront_function.auth.arn
     }
   }
 

@@ -52,3 +52,31 @@ resource "aws_lambda_permission" "search_from_apigw" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
 }
+
+resource "aws_apigatewayv2_integration" "auth" {
+  api_id                 = aws_apigatewayv2_api.http.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.auth.invoke_arn
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "auth_login" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /api/login"
+  target    = "integrations/${aws_apigatewayv2_integration.auth.id}"
+}
+
+resource "aws_apigatewayv2_route" "auth_callback" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /api/callback"
+  target    = "integrations/${aws_apigatewayv2_integration.auth.id}"
+}
+
+resource "aws_lambda_permission" "auth_from_apigw" {
+  statement_id  = "AllowHttpApiInvokeAuth"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.auth.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
+}

@@ -4,6 +4,24 @@ environment         = "dev"
 bedrock_model_id    = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 # For Sonnet 4.5, set this to an inference profile ARN if your account does not support on-demand use for the model.
 # bedrock_agent_foundation_model = "arn:aws:bedrock:us-east-1:123456789012:inference-profile/your-profile-id"
-basic_auth_secret_name = "bedrock-chat-basic-auth"
-basic_auth_username    = "admin"
-basic_auth_password    = "replace-me"
+
+# --- Microsoft OIDC (Cognito identity provider) ---
+# Register a free app at https://portal.azure.com:
+#   1. App registrations → New registration
+#   2. Name: anything (e.g. "bedrock-chat-dev")
+#   3. Supported account types: "Accounts in any org directory AND personal Microsoft accounts"
+#   4. Redirect URI: leave blank for now — Terraform prints the correct callback URL after first apply
+#   5. After creation: Certificates & secrets → New client secret → copy value immediately
+#   6. Copy Application (client) ID from the app overview page
+cognito_oidc_client_id     = "your-azure-app-client-id"
+cognito_oidc_client_secret = "your-azure-app-client-secret"
+
+# For BMO production, replace /common/ with the specific Entra ID tenant ID:
+# cognito_oidc_issuer = "https://login.microsoftonline.com/<bmo-tenant-id>/v2.0"
+cognito_oidc_issuer = "https://login.microsoftonline.com/common/v2.0"
+
+# Two-step deploy: leave empty on first apply.
+# After apply: copy the cloudfront_url output (without https://) here and re-apply.
+# Terraform will then register the real callback URL with the Cognito app client.
+cloudfront_domain = ""
+

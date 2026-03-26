@@ -3,7 +3,139 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign in — Bedrock Knowledge Chat</title>
+  <title>Signing in — Bedrock Knowledge Chat</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --ink: #1f2933;
+      --muted: #5d6a72;
+      --accent: #0d5c63;
+      --shadow: 0 24px 60px rgba(23, 40, 53, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(13, 92, 99, 0.18), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(199, 138, 69, 0.18), transparent 28%),
+        linear-gradient(180deg, #f7f1e7 0%, #ece5d8 100%);
+    }
+
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: rgba(255, 252, 247, 0.86);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(31, 41, 51, 0.1);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 40px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      text-align: center;
+    }
+
+    .eyebrow {
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.8rem;
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(13, 92, 99, 0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .manual {
+      display: none;
+    }
+
+    button {
+      padding: 12px 20px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div>
+      <div class="eyebrow">Bedrock Chat</div>
+      <h1>Signing in&hellip;</h1>
+    </div>
+    <div class="spinner" id="spinner"></div>
+    <p id="msg">Redirecting to Microsoft sign-in&hellip;</p>
+    <div class="manual" id="manual">
+      <p>Automatic redirect failed.</p>
+      <button id="btn" type="button">Sign in with Microsoft</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var params   = new URLSearchParams(window.location.search);
+      var redirect = params.get('redirect') || '/';
+      var loginUrl = '/api/login'
+        + '?origin='   + encodeURIComponent(window.location.origin)
+        + '&redirect=' + encodeURIComponent(redirect);
+
+      // Attempt automatic redirect; show manual button after 3 s as fallback.
+      var fallback = setTimeout(function () {
+        document.getElementById('spinner').style.display = 'none';
+        document.getElementById('msg').style.display = 'none';
+        var manual = document.getElementById('manual');
+        manual.style.display = 'block';
+        document.getElementById('btn').addEventListener('click', function () {
+          window.location.href = loginUrl;
+        });
+      }, 3000);
+
+      window.location.href = loginUrl;
+      clearTimeout(fallback);
+    }());
+  </script>
+</body>
+</html>
+
   <style>
     :root {
       --bg: #f3efe6;

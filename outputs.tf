@@ -13,7 +13,7 @@ output "cognito_callback_url_reminder" {
   value       = var.cloudfront_domain != "" ? "https://${var.cloudfront_domain}/api/callback (registered)" : "Not yet set — add cloudfront_domain to terraform.tfvars and re-apply"
 }
 
-
+output "cloudfront_url" {
   description = "CloudFront URL for the protected static app and API ingress."
   value       = "https://${aws_cloudfront_distribution.app.domain_name}"
 }

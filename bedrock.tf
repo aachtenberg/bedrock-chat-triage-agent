@@ -93,12 +93,5 @@ resource "aws_bedrockagent_agent_alias" "chat" {
   agent_id         = aws_bedrockagent_agent.chat.agent_id
   description      = "Live alias for the Bedrock chat agent."
 
-  routing_configuration {
-    agent_version = local.latest_agent_version
-  }
-
-  depends_on = [
-    aws_bedrockagent_agent_knowledge_base_association.chat,
-    data.aws_bedrockagent_agent_versions.chat,
-  ]
+  depends_on = [aws_bedrockagent_agent_knowledge_base_association.chat]
 }

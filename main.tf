@@ -2,10 +2,6 @@ data "aws_caller_identity" "current" {}
 
 data "aws_partition" "current" {}
 
-data "aws_bedrockagent_agent_versions" "chat" {
-  agent_id = aws_bedrockagent_agent.chat.agent_id
-}
-
 data "aws_cloudfront_cache_policy" "caching_disabled" {
   provider = aws.us_east_1
   name     = "Managed-CachingDisabled"

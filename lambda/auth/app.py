@@ -83,6 +83,11 @@ def handle_callback(event: dict) -> dict:
     code      = params.get("code")
     state_b64 = params.get("state", "")
 
+    # Cognito forwards IdP errors here with ?error=...&error_description=...
+    if params.get("error"):
+        err_desc = params.get("error_description") or params.get("error", "unknown")
+        return error(400, f"Sign-in failed: {err_desc}")
+
     if not code:
         return error(400, "Missing authorization code.")
 

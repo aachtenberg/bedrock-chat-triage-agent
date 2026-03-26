@@ -2,7 +2,6 @@ locals {
   name_prefix              = lower("${var.project_name}-${var.environment}")
   agent_model_identifier   = coalesce(var.bedrock_agent_foundation_model, var.bedrock_model_id)
   agent_model_resource_arn = startswith(local.agent_model_identifier, "arn:") ? local.agent_model_identifier : "arn:${data.aws_partition.current.partition}:bedrock:${var.aws_region}::foundation-model/${local.agent_model_identifier}"
-  latest_agent_version     = tostring(max([for summary in data.aws_bedrockagent_agent_versions.chat.agent_version_summaries : tonumber(summary.agent_version) if can(tonumber(summary.agent_version))]...))
   model_arn_wildcard       = "arn:${data.aws_partition.current.partition}:bedrock:*::foundation-model/${var.bedrock_model_id}"
   embedding_model_arn      = "arn:${data.aws_partition.current.partition}:bedrock:${var.aws_region}::foundation-model/${var.embedding_model_id}"
   session_secret           = random_password.session_secret.result

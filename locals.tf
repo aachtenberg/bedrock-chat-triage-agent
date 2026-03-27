@@ -1,6 +1,7 @@
 locals {
   name_prefix              = lower("${var.project_name}-${var.environment}")
   cognito_enabled          = var.auth_mode == "cognito"
+  otp_enabled              = var.auth_mode == "otp"
   agent_model_identifier   = coalesce(var.bedrock_agent_foundation_model, var.bedrock_model_id)
   agent_model_resource_arn = startswith(local.agent_model_identifier, "arn:") ? local.agent_model_identifier : "arn:${data.aws_partition.current.partition}:bedrock:${var.aws_region}::foundation-model/${local.agent_model_identifier}"
   model_arn_wildcard       = "arn:${data.aws_partition.current.partition}:bedrock:*::foundation-model/${var.bedrock_model_id}"

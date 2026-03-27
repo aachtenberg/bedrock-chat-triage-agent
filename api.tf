@@ -88,3 +88,39 @@ resource "aws_lambda_permission" "auth_from_apigw" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
 }
+
+resource "aws_apigatewayv2_integration" "otp" {
+  count = local.otp_enabled ? 1 : 0
+
+  api_id                 = aws_apigatewayv2_api.http.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.otp[0].invoke_arn
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "otp_request" {
+  count = local.otp_enabled ? 1 : 0
+
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "POST /api/otp/request"
+  target    = "integrations/${aws_apigatewayv2_integration.otp[0].id}"
+}
+
+resource "aws_apigatewayv2_route" "otp_verify" {
+  count = local.otp_enabled ? 1 : 0
+
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "POST /api/otp/verify"
+  target    = "integrations/${aws_apigatewayv2_integration.otp[0].id}"
+}
+
+resource "aws_lambda_permission" "otp_from_apigw" {
+  count = local.otp_enabled ? 1 : 0
+
+  statement_id  = "AllowHttpApiInvokeOtp"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.otp[0].function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
+}

@@ -24,7 +24,8 @@ async function handler(event) {
 
   // Pass auth endpoints and the login page through without checking the session.
   if (uri === '/login' || uri === '/login.html' ||
-      uri.startsWith('/api/login') || uri.startsWith('/api/callback')) {
+      uri.startsWith('/api/login') || uri.startsWith('/api/callback') ||
+      uri.startsWith('/api/otp/')) {
     if (uri === '/login') request.uri = '/login.html';
     return request;
   }

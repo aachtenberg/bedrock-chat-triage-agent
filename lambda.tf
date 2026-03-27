@@ -103,3 +103,42 @@ resource "aws_lambda_function" "auth" {
 
   depends_on = [aws_cloudwatch_log_group.auth]
 }
+
+data "archive_file" "otp" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/otp"
+  output_path = "${path.module}/otp_lambda.zip"
+}
+
+resource "aws_cloudwatch_log_group" "otp" {
+  count = local.otp_enabled ? 1 : 0
+
+  name              = "/aws/lambda/${local.name_prefix}-otp"
+  retention_in_days = 14
+}
+
+resource "aws_lambda_function" "otp" {
+  count = local.otp_enabled ? 1 : 0
+
+  function_name    = "${local.name_prefix}-otp"
+  filename         = data.archive_file.otp.output_path
+  source_code_hash = data.archive_file.otp.output_base64sha256
+  role             = aws_iam_role.lambda.arn
+  handler          = "app.handler"
+  runtime          = "python3.12"
+  timeout          = 30
+  memory_size      = 256
+
+  environment {
+    variables = {
+      OTP_TABLE_NAME      = aws_dynamodb_table.otp_codes[0].name
+      OTP_SENDER_EMAIL    = var.otp_sender_email
+      OTP_ALLOWED_DOMAINS = join(",", var.otp_allowed_email_domains)
+      SESSION_SECRET      = local.session_secret
+      SESSION_TTL_SECONDS = tostring(var.session_ttl_seconds)
+      OTP_TTL_SECONDS     = tostring(var.otp_ttl_seconds)
+    }
+  }
+
+  depends_on = [aws_cloudwatch_log_group.otp]
+}

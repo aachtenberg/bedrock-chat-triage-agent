@@ -8,9 +8,7 @@ bedrock_model_id    = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 # --- Auth mode ---
 # "cognito"  — Cognito SSO via Microsoft Entra ID / Azure AD (default, recommended)
 # "basic"    — HTTP Basic Auth (simpler, no Azure app registration required)
-auth_mode = "cognito"
-
-# ============================================================
+# "otp"      — Email one-time password (no SSO provider needed; requires SES verified sender)
 # Option A: Cognito SSO (auth_mode = "cognito")
 # ============================================================
 # Register a free app at https://portal.azure.com:
@@ -39,3 +37,21 @@ cloudfront_domain = ""
 # basic_auth_username = "admin"
 # basic_auth_password = "change-me-in-production"
 
+# ============================================================
+# Option C: Email OTP (auth_mode = "otp")
+# ============================================================
+# Users enter their work email; a 6-digit code is sent via SES.
+# No Azure/Cognito setup needed. Requires SES sender verification (see below).
+#
+# 1. Verify your sender address in SES (run once):
+#      aws ses verify-email-identity --email-address noreply@example.com --region us-east-1
+#    Or verify your entire domain via SES domain identity (adds DNS TXT records).
+#    Note: new AWS accounts are in SES sandbox — recipient emails must also be verified
+#    until you request production access via the AWS console.
+#
+# 2. Set the variables below in terraform.tfvars (this file is gitignored so secrets stay private).
+#
+# auth_mode          = "otp"
+# otp_sender_email   = "noreply@example.com"
+# otp_allowed_email_domains = ["example.com"]   # restrict to specific domains; [] = allow any
+# otp_ttl_seconds    = 600                       # code expiry in seconds (default: 10 min)

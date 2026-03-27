@@ -40,13 +40,13 @@ variable "embedding_dimensions" {
 }
 
 variable "auth_mode" {
-  description = "Authentication mode: \"cognito\" for Cognito SSO via Microsoft Entra ID, or \"basic\" for HTTP Basic Auth."
+  description = "Authentication mode: \"cognito\" for Cognito SSO via Microsoft Entra ID, \"basic\" for HTTP Basic Auth, or \"otp\" for email one-time password."
   type        = string
   default     = "cognito"
 
   validation {
-    condition     = contains(["cognito", "basic"], var.auth_mode)
-    error_message = "auth_mode must be \"cognito\" or \"basic\"."
+    condition     = contains(["cognito", "basic", "otp"], var.auth_mode)
+    error_message = "auth_mode must be \"cognito\", \"basic\", or \"otp\"."
   }
 }
 
@@ -86,6 +86,24 @@ variable "cloudfront_domain" {
   description = "CloudFront domain from a previous apply (e.g. abc123.cloudfront.net, without https://). Leave empty on first apply. After first apply, set this to the cloudfront_url output value and re-apply to register the real callback URL with Cognito."
   type        = string
   default     = ""
+}
+
+variable "otp_allowed_email_domains" {
+  description = "Email domains permitted to sign in via OTP (e.g. [\"example.com\"]). Empty list allows any domain. Set in terraform.tfvars (gitignored) to keep domain names out of the repo."
+  type        = list(string)
+  default     = []
+}
+
+variable "otp_sender_email" {
+  description = "SES-verified sender address for OTP emails (e.g. \"noreply@example.com\"). Required when auth_mode = \"otp\". Must be verified in SES before deploying."
+  type        = string
+  default     = ""
+}
+
+variable "otp_ttl_seconds" {
+  description = "How long an OTP code remains valid after sending."
+  type        = number
+  default     = 600
 }
 
 variable "session_ttl_seconds" {

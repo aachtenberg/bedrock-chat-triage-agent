@@ -45,13 +45,26 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "knowledge_base" {
 }
 
 resource "aws_s3_object" "web" {
-  for_each = { for file_name in local.web_files : file_name => file_name }
+  for_each = {
+    for file_name in local.web_files : file_name => file_name
+    if file_name != "login.html" && file_name != "otp-login.html"
+  }
 
   bucket       = aws_s3_bucket.web.id
   key          = each.value
   source       = "${path.module}/web/${each.value}"
   etag         = filemd5("${path.module}/web/${each.value}")
   content_type = lookup(local.content_types, lower(regex("[^.]+$", each.value)), "application/octet-stream")
+}
+
+# Upload the correct login page depending on auth_mode.
+# otp-login.html is served as login.html in OTP mode; the Cognito/basic login.html otherwise.
+resource "aws_s3_object" "login_page" {
+  bucket       = aws_s3_bucket.web.id
+  key          = "login.html"
+  source       = var.auth_mode == "otp" ? "${path.module}/web/otp-login.html" : "${path.module}/web/login.html"
+  etag         = filemd5(var.auth_mode == "otp" ? "${path.module}/web/otp-login.html" : "${path.module}/web/login.html")
+  content_type = "text/html; charset=utf-8"
 }
 
 resource "aws_s3_object" "knowledge_base" {

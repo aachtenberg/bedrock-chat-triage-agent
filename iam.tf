@@ -46,6 +46,34 @@ resource "aws_iam_role_policy" "lambda" {
   })
 }
 
+resource "aws_iam_role_policy" "lambda_otp" {
+  count = local.otp_enabled ? 1 : 0
+
+  name = "${local.name_prefix}-lambda-otp-policy"
+  role = aws_iam_role.lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
+        ]
+        Resource = aws_dynamodb_table.otp_codes[0].arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ses:SendEmail"]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 data "aws_iam_policy_document" "bedrock_agent_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]

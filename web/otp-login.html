@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in — Bedrock Knowledge Chat</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --ink: #1f2933;
+      --muted: #5d6a72;
+      --accent: #0d5c63;
+      --error: #b91c1c;
+      --shadow: 0 24px 60px rgba(23, 40, 53, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(13, 92, 99, 0.18), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(199, 138, 69, 0.18), transparent 28%),
+        linear-gradient(180deg, #f7f1e7 0%, #ece5d8 100%);
+    }
+
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: rgba(255, 252, 247, 0.86);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(31, 41, 51, 0.1);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 40px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .eyebrow {
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      color: var(--accent);
+      font-weight: 700;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.8rem;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    p.subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input[type="email"],
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid rgba(31, 41, 51, 0.2);
+      border-radius: 10px;
+      font-size: 1rem;
+      font-family: inherit;
+      background: rgba(255,255,255,0.7);
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+    }
+
+    input[type="text"] {
+      letter-spacing: 0.25em;
+      font-size: 1.4rem;
+      text-align: center;
+    }
+
+    button {
+      padding: 12px 20px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: opacity 0.15s;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .back-link {
+      font-size: 0.85rem;
+      color: var(--accent);
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      text-decoration: underline;
+      width: auto;
+      display: inline;
+    }
+
+    .error-msg {
+      color: var(--error);
+      font-size: 0.85rem;
+      text-align: center;
+      min-height: 1.2em;
+    }
+
+    .spinner {
+      width: 22px;
+      height: 22px;
+      border: 3px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .step { display: none; flex-direction: column; gap: 16px; }
+    .step.active { display: flex; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div>
+      <div class="eyebrow">Bedrock Chat</div>
+      <h1>Sign in</h1>
+    </div>
+
+    <!-- Step 1: email entry -->
+    <div class="step active" id="step-email">
+      <p class="subtitle">Enter your work email to receive a one-time code.</p>
+      <div>
+        <label for="email-input">Work email</label>
+        <input type="email" id="email-input" placeholder="you@company.com" autocomplete="email" autofocus>
+      </div>
+      <div class="error-msg" id="email-error"></div>
+      <button id="send-btn" type="button">Send code</button>
+    </div>
+
+    <!-- Step 2: code entry -->
+    <div class="step" id="step-code">
+      <p class="subtitle" id="code-hint">Enter the 6-digit code sent to your email.</p>
+      <div>
+        <label for="code-input">One-time code</label>
+        <input type="text" id="code-input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+      </div>
+      <div class="error-msg" id="code-error"></div>
+      <button id="verify-btn" type="button">Sign in</button>
+      <button class="back-link" id="back-btn" type="button">Use a different email</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var params      = new URLSearchParams(window.location.search);
+      var redirectTo  = params.get('redirect') || '/';
+      var origin      = window.location.origin;
+
+      var emailInput  = document.getElementById('email-input');
+      var codeInput   = document.getElementById('code-input');
+      var sendBtn     = document.getElementById('send-btn');
+      var verifyBtn   = document.getElementById('verify-btn');
+      var backBtn     = document.getElementById('back-btn');
+      var emailError  = document.getElementById('email-error');
+      var codeError   = document.getElementById('code-error');
+      var codeHint    = document.getElementById('code-hint');
+      var stepEmail   = document.getElementById('step-email');
+      var stepCode    = document.getElementById('step-code');
+
+      function showStep(name) {
+        stepEmail.classList.toggle('active', name === 'email');
+        stepCode.classList.toggle('active', name === 'code');
+      }
+
+      function setLoading(btn, loading) {
+        btn.disabled = loading;
+        btn.innerHTML = loading ? '<span class="spinner"></span>' : btn.dataset.label;
+      }
+
+      sendBtn.dataset.label  = sendBtn.textContent;
+      verifyBtn.dataset.label = verifyBtn.textContent;
+
+      sendBtn.addEventListener('click', function () {
+        emailError.textContent = '';
+        var email = emailInput.value.trim();
+        if (!email) { emailError.textContent = 'Please enter your email.'; return; }
+
+        setLoading(sendBtn, true);
+        fetch('/api/otp/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email })
+        })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+          setLoading(sendBtn, false);
+          if (!res.ok) {
+            emailError.textContent = res.data.error || 'Something went wrong.';
+            return;
+          }
+          codeHint.textContent = 'Enter the 6-digit code sent to ' + email + '.';
+          showStep('code');
+          codeInput.focus();
+        })
+        .catch(function () {
+          setLoading(sendBtn, false);
+          emailError.textContent = 'Network error — please try again.';
+        });
+      });
+
+      verifyBtn.addEventListener('click', function () {
+        codeError.textContent = '';
+        var code = codeInput.value.trim();
+        if (code.length !== 6) { codeError.textContent = 'Please enter the 6-digit code.'; return; }
+
+        setLoading(verifyBtn, true);
+        fetch('/api/otp/verify?origin=' + encodeURIComponent(origin) + '&redirect=' + encodeURIComponent(redirectTo), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailInput.value.trim(), code: code })
+        })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+          setLoading(verifyBtn, false);
+          if (!res.ok) {
+            codeError.textContent = res.data.error || 'Something went wrong.';
+            return;
+          }
+          window.location.href = res.data.redirect || '/';
+        })
+        .catch(function () {
+          setLoading(verifyBtn, false);
+          codeError.textContent = 'Network error — please try again.';
+        });
+      });
+
+      backBtn.addEventListener('click', function () {
+        codeError.textContent = '';
+        codeInput.value = '';
+        showStep('email');
+        emailInput.focus();
+      });
+
+      // Allow Enter key on inputs.
+      emailInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendBtn.click(); });
+      codeInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') verifyBtn.click(); });
+    }());
+  </script>
+</body>
+</html>

@@ -3,10 +3,10 @@
 Terraform scaffold for a simple and cost-conscious Bedrock chat app with these components:
 
 - CloudFront serving a static HTML app from a private S3 bucket
-- CloudFront basic auth enforced with a CloudFront Function
+- Cognito SSO (Microsoft Entra ID / Azure AD OIDC) enforced via a CloudFront Function + auth Lambda
 - AWS WAF attached to CloudFront for ingress protection
 - API Gateway HTTP API behind the same CloudFront distribution under `/api/*`
-- Python Lambda handlers for chat and direct knowledge-base search
+- Python Lambda handlers for auth, chat, and direct knowledge-base search
 - A real Amazon Bedrock Agent for chat orchestration
 - Amazon Bedrock Knowledge Base using S3 documents and S3 Vectors
 - Claude Sonnet 4.5 used by the Bedrock Agent for orchestration
@@ -18,7 +18,7 @@ This scaffold biases toward low operational overhead and lower baseline cost:
 - S3 hosts the website instead of Amplify or a container service
 - One CloudFront distribution fronts both static files and the API
 - HTTP API is cheaper than REST API Gateway
-- CloudFront Function is cheaper than Lambda@Edge for basic auth
+- CloudFront Function validates HMAC session cookies at the edge (no Lambda@Edge cost)
 - S3 Vectors is used for the Bedrock Knowledge Base instead of OpenSearch Serverless
 - No VPC, NAT, ECS, or persistent compute is introduced
 
@@ -28,22 +28,28 @@ This scaffold biases toward low operational overhead and lower baseline cost:
 Browser
   -> CloudFront
       -> WAF
-      -> Basic auth function
+      -> CloudFront Function (HMAC cookie validation)
       -> S3 origin for web assets
       -> API Gateway origin for /api/*
-            -> Chat Lambda -> Bedrock InvokeAgent -> Bedrock Agent -> Knowledge Base -> S3 docs + S3 Vectors
+            -> Auth Lambda  -> /api/login  (redirect to Cognito hosted UI)
+                            -> /api/callback (exchange code, issue HMAC cookie)
+            -> Chat Lambda  -> Bedrock InvokeAgent -> Bedrock Agent -> Knowledge Base -> S3 docs + S3 Vectors
             -> Search Lambda -> Bedrock Retrieve -> Knowledge Base
+
+Cognito Hosted UI -> Microsoft Entra ID OIDC -> Cognito -> /api/callback
 ```
 
 ## Repository layout
 
 ```text
-cloudfront/basic-auth.js.tftpl   CloudFront Function template for basic auth
+cloudfront/auth.js.tftpl         CloudFront Function template (HMAC cookie validation)
 knowledge-base/                  Sample documents uploaded to the S3 knowledge-base bucket
+lambda/auth/app.py               Auth endpoint: /api/login and /api/callback (Cognito OIDC)
 lambda/chat/app.py               Chat endpoint using Bedrock InvokeAgent
 lambda/search/app.py             Search endpoint using Bedrock Retrieve
 scripts/start_ingestion.sh       Helper for Bedrock data-source ingestion jobs
 web/index.html                   Static single-page UI
+web/login.html                   Login page (auto-redirects to Cognito hosted UI)
 *.tf                             Terraform infrastructure definition
 ```
 
@@ -54,7 +60,9 @@ web/index.html                   Static single-page UI
 - Bedrock access enabled in your account for:
   - Claude Sonnet 4.5 in your chosen region
   - Amazon Titan Embeddings v2 in your chosen region
-- Permissions to create and manage an AWS Secrets Manager secret for CloudFront basic auth
+- A Microsoft Entra ID (Azure AD) app registration with:
+  - A client ID and secret
+  - Redirect URI: `https://<cognito-domain>/oauth2/idpresponse` (added after first apply)
 
 For Sonnet 4.5 specifically, many accounts require an inference profile for agent orchestration. This scaffold supports that by letting you set `bedrock_agent_foundation_model` to an inference profile ARN.
 
@@ -63,44 +71,45 @@ For Sonnet 4.5 specifically, many accounts require an inference profile for agen
 Copy `terraform.tfvars.example` to `terraform.tfvars` and adjust at minimum:
 
 ```hcl
-aws_region          = "us-east-1"
-project_name        = "bedrock-chat"
-environment         = "dev"
-bedrock_model_id    = "anthropic.claude-sonnet-4-5-20250929-v1:0"
+aws_region                     = "us-east-1"
+project_name                   = "bedrock-chat"
+environment                    = "dev"
+bedrock_model_id               = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 bedrock_agent_foundation_model = "arn:aws:bedrock:us-east-1:123456789012:inference-profile/your-profile-id"
-basic_auth_secret_name = "bedrock-chat-basic-auth"
-basic_auth_username    = "admin"
-basic_auth_password    = "replace-me"
-```
-
-Terraform now creates the secret object and its current version for you. The stored JSON shape is:
-
-```json
-{
-  "username": "admin",
-  "password": "replace-me",
-  "realm": "Bedrock Chat"
-}
+cognito_oidc_client_id         = "<azure-app-client-id>"
+cognito_oidc_client_secret     = "<azure-app-client-secret>"
+cognito_oidc_issuer            = "https://login.microsoftonline.com/<tenant-id>/v2.0"
+# Leave blank on first apply; set to CloudFront domain after first apply and re-apply
+cloudfront_domain              = ""
 ```
 
 Notes:
 
 - `bedrock_model_id` must match the exact Sonnet 4.5 model ID that is enabled in your region.
-- The example model ID is a placeholder for the current Sonnet 4.5 naming pattern. Confirm it in Bedrock before apply.
-- `bedrock_agent_foundation_model` is optional. If omitted, the Bedrock Agent uses `bedrock_model_id`. If your account requires an inference profile for Sonnet 4.5, provide the inference profile ARN here.
-- `realm` is optional in the secret. If omitted, Terraform falls back to `basic_auth_realm`.
-- You can change the JSON keys with `basic_auth_secret_username_key`, `basic_auth_secret_password_key`, and `basic_auth_secret_realm_key` if your secret format differs.
-- `basic_auth_secret_recovery_window_in_days` controls secret deletion behavior. Use `0` only for short-lived environments where immediate cleanup matters more than recovery.
+- `bedrock_agent_foundation_model` is optional. If your account requires an inference profile for Sonnet 4.5, provide the inference profile ARN here.
+- Use the specific tenant ID in `cognito_oidc_issuer` (not `/common/`) — Cognito validates the `iss` claim against this value.
+- `cloudfront_domain` is intentionally left blank on the first apply (a placeholder callback URL is used). After first apply, set it to the `cloudfront_url` output and re-apply to register the real callback URL with Cognito.
 
 ## Deploy
 
+This is a two-step apply due to a CloudFront → Cognito circular dependency:
+
+**Step 1** — deploy without a callback URL:
 ```bash
 terraform init
-terraform plan
+terraform apply   # cloudfront_domain = "" in tfvars
+```
+
+**Step 2** — register the real CloudFront callback URL:
+```bash
+# 1. Copy cloudfront_url from the Step 1 output into terraform.tfvars:
+#    cloudfront_domain = "<xyz>.cloudfront.net"
+# 2. Add the Cognito idpresponse URI to your Azure app registration:
+#    https://<cognito-domain>/oauth2/idpresponse  (Web platform, not SPA)
 terraform apply
 ```
 
-After apply, Terraform outputs:
+After the second apply, Terraform outputs:
 
 - the CloudFront URL for the site
 - the Bedrock Agent ID and alias ID used by chat
@@ -127,16 +136,17 @@ The HTML app offers two modes:
 - `Ask Sonnet`: calls `/api/chat`, which uses Bedrock `InvokeAgent`
 - `Search KB`: calls `/api/search`, which uses Bedrock `Retrieve`
 
-Because both paths are served through the same CloudFront domain, the browser does not need CORS configuration and the WAF/basic-auth protections apply to both the site and the API ingress.
+Because both paths are served through the same CloudFront domain, the browser does not need CORS configuration and the WAF protections apply to both the site and the API ingress.
 
-## Secrets Manager note
+## Auth flow
 
-The basic-auth credentials are now written into and sourced from a Terraform-managed AWS Secrets Manager secret. That is operationally cleaner than a manually pre-created secret, but there is an important constraint:
-
-- CloudFront Functions cannot call Secrets Manager at request time.
-- Terraform reads the secret value during apply and renders it into the CloudFront Function code.
-
-So this creates the Secrets Manager object as requested and improves secret management workflow, but it does not fully eliminate secret exposure from Terraform state or deployed CloudFront Function configuration. If you want stronger runtime secret isolation, the next step would be moving auth to a Lambda@Edge or another runtime component that can fetch secrets dynamically, with the tradeoff of higher cost and more operational complexity.
+1. Unauthenticated request hits CloudFront → CloudFront Function checks for a valid `_auth` HMAC cookie → redirects to `/login`.
+2. `login.html` redirects to `/api/login` → auth Lambda redirects to Cognito hosted UI.
+3. Cognito hosted UI federates to Microsoft Entra ID via OIDC.
+4. Azure authenticates the user and redirects back to Cognito's `idpresponse` endpoint.
+5. Cognito exchanges the token and redirects to `/api/callback` with an authorization code.
+6. Auth Lambda exchanges the code for tokens, issues an HMAC-signed `_auth` session cookie, and redirects to the original destination.
+7. Subsequent requests carry the cookie; the CloudFront Function validates the HMAC without any Lambda invocation.
 
 ## Cost notes
 

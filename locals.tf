@@ -1,5 +1,6 @@
 locals {
   name_prefix              = lower("${var.project_name}-${var.environment}")
+  cognito_enabled          = var.auth_mode == "cognito"
   agent_model_identifier   = coalesce(var.bedrock_agent_foundation_model, var.bedrock_model_id)
   agent_model_resource_arn = startswith(local.agent_model_identifier, "arn:") ? local.agent_model_identifier : "arn:${data.aws_partition.current.partition}:bedrock:${var.aws_region}::foundation-model/${local.agent_model_identifier}"
   model_arn_wildcard       = "arn:${data.aws_partition.current.partition}:bedrock:*::foundation-model/${var.bedrock_model_id}"
@@ -29,4 +30,11 @@ locals {
     txt  = "text/plain; charset=utf-8"
     webp = "image/webp"
   }
+
+  # Safe accessors for Cognito resources that are count-conditional.
+  # one() returns null when the resource has count=0, avoiding index-out-of-bounds errors.
+  cognito_client_id     = one(aws_cognito_user_pool_client.app[*].id)
+  cognito_client_secret = one(aws_cognito_user_pool_client.app[*].client_secret)
+  cognito_domain        = one(aws_cognito_user_pool_domain.app[*].domain)
+  cognito_hosted_domain = local.cognito_domain != null ? "https://${local.cognito_domain}.auth.${var.aws_region}.amazoncognito.com" : null
 }

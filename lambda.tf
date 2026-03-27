@@ -72,11 +72,15 @@ resource "aws_lambda_function" "search" {
 }
 
 resource "aws_cloudwatch_log_group" "auth" {
+  count = local.cognito_enabled ? 1 : 0
+
   name              = "/aws/lambda/${local.name_prefix}-auth"
   retention_in_days = 14
 }
 
 resource "aws_lambda_function" "auth" {
+  count = local.cognito_enabled ? 1 : 0
+
   function_name    = "${local.name_prefix}-auth"
   filename         = data.archive_file.auth.output_path
   source_code_hash = data.archive_file.auth.output_base64sha256
@@ -88,9 +92,9 @@ resource "aws_lambda_function" "auth" {
 
   environment {
     variables = {
-      COGNITO_CLIENT_ID         = aws_cognito_user_pool_client.app.id
-      COGNITO_CLIENT_SECRET     = aws_cognito_user_pool_client.app.client_secret
-      COGNITO_DOMAIN            = "${aws_cognito_user_pool_domain.app.domain}.auth.${var.aws_region}.amazoncognito.com"
+      COGNITO_CLIENT_ID         = local.cognito_client_id
+      COGNITO_CLIENT_SECRET     = local.cognito_client_secret
+      COGNITO_DOMAIN            = local.cognito_domain != null ? "${local.cognito_domain}.auth.${var.aws_region}.amazoncognito.com" : ""
       COGNITO_IDENTITY_PROVIDER = "Microsoft"
       SESSION_SECRET            = local.session_secret
       SESSION_TTL_SECONDS       = tostring(var.session_ttl_seconds)

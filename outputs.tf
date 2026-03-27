@@ -1,16 +1,21 @@
+output "auth_mode" {
+  description = "The authentication mode in use: cognito or basic."
+  value       = var.auth_mode
+}
+
 output "cognito_hosted_ui_domain" {
-  description = "Cognito hosted UI base domain. The auth flow is kicked off via /api/login — you do not normally need this directly."
-  value       = "https://${aws_cognito_user_pool_domain.app.domain}.auth.${var.aws_region}.amazoncognito.com"
+  description = "Cognito hosted UI base domain (cognito mode only)."
+  value       = local.cognito_hosted_domain != null ? local.cognito_hosted_domain : "N/A (auth_mode = basic)"
 }
 
 output "cognito_client_id" {
-  description = "Cognito User Pool Client ID. After first apply, set cloudfront_domain in terraform.tfvars to the cloudfront_url output value and re-apply to register the real callback URL."
-  value       = aws_cognito_user_pool_client.app.id
+  description = "Cognito User Pool Client ID (cognito mode only)."
+  value       = local.cognito_client_id != null ? local.cognito_client_id : "N/A (auth_mode = basic)"
 }
 
 output "cognito_callback_url_reminder" {
-  description = "The callback URL that must be registered in the Cognito client. Set cloudfront_domain = <cloudfront domain> in terraform.tfvars and re-apply if cloudfront_domain is still empty."
-  value       = var.cloudfront_domain != "" ? "https://${var.cloudfront_domain}/api/callback (registered)" : "Not yet set — add cloudfront_domain to terraform.tfvars and re-apply"
+  description = "The callback URL that must be registered in the Cognito client (cognito mode only)."
+  value       = local.cognito_enabled ? (var.cloudfront_domain != "" ? "https://${var.cloudfront_domain}/api/callback (registered)" : "Not yet set — add cloudfront_domain to terraform.tfvars and re-apply") : "N/A (auth_mode = basic)"
 }
 
 output "cloudfront_url" {

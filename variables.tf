@@ -39,14 +39,40 @@ variable "embedding_dimensions" {
   default     = 1024
 }
 
-variable "cognito_oidc_client_id" {
-  description = "Client ID of the Microsoft Azure app registration used as the Cognito identity provider."
+variable "auth_mode" {
+  description = "Authentication mode: \"cognito\" for Cognito SSO via Microsoft Entra ID, or \"basic\" for HTTP Basic Auth."
   type        = string
+  default     = "cognito"
+
+  validation {
+    condition     = contains(["cognito", "basic"], var.auth_mode)
+    error_message = "auth_mode must be \"cognito\" or \"basic\"."
+  }
+}
+
+variable "basic_auth_username" {
+  description = "Username for basic auth. Only used when auth_mode = \"basic\"."
+  type        = string
+  default     = "admin"
+}
+
+variable "basic_auth_password" {
+  description = "Password for basic auth. Only used when auth_mode = \"basic\". Must be set when auth_mode = \"basic\"."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "cognito_oidc_client_id" {
+  description = "Client ID of the Microsoft Azure app registration used as the Cognito identity provider. Required when auth_mode = \"cognito\"."
+  type        = string
+  default     = ""
 }
 
 variable "cognito_oidc_client_secret" {
-  description = "Client secret of the Microsoft Azure app registration."
+  description = "Client secret of the Microsoft Azure app registration. Required when auth_mode = \"cognito\"."
   type        = string
+  default     = ""
   sensitive   = true
 }
 

@@ -1,0 +1,26 @@
+// CloudFront Function (viewer-request) — HTTP Basic Auth.
+// Runtime: cloudfront-js-2.0
+//
+// Username and password are rendered into the function at terraform apply time.
+// To change credentials, update basic_auth_username / basic_auth_password in
+// terraform.tfvars and re-apply.
+
+var EXPECTED = 'Basic ${base64_credentials}';
+
+async function handler(event) {
+  var request = event.request;
+  var auth = (request.headers['authorization'] || {}).value;
+
+  if (auth === EXPECTED) {
+    return request;
+  }
+
+  return {
+    statusCode: 401,
+    statusDescription: 'Unauthorized',
+    headers: {
+      'www-authenticate': { value: 'Basic realm="Bedrock Chat"' },
+      'cache-control': { value: 'no-store' }
+    }
+  };
+}

@@ -14,9 +14,11 @@ resource "aws_cloudfront_function" "auth" {
   name    = "${local.name_prefix}-auth"
   runtime = "cloudfront-js-2.0"
   publish = true
-  comment = "Viewer-request HMAC session validation. Passes /api/login and /api/callback through unauthenticated."
-  code = templatefile("${path.module}/cloudfront/auth.js.tftpl", {
+  comment = var.auth_mode == "cognito" ? "Viewer-request HMAC session validation. Passes /api/login and /api/callback through unauthenticated." : "Viewer-request HTTP Basic Auth."
+  code = var.auth_mode == "cognito" ? templatefile("${path.module}/cloudfront/auth.js.tftpl", {
     session_secret = local.session_secret
+  }) : templatefile("${path.module}/cloudfront/basic-auth.js.tftpl", {
+    base64_credentials = base64encode("${var.basic_auth_username}:${var.basic_auth_password}")
   })
 }
 

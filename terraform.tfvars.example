@@ -5,7 +5,14 @@ bedrock_model_id    = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 # For Sonnet 4.5, set this to an inference profile ARN if your account does not support on-demand use for the model.
 # bedrock_agent_foundation_model = "arn:aws:bedrock:us-east-1:123456789012:inference-profile/your-profile-id"
 
-# --- Microsoft OIDC (Cognito identity provider) ---
+# --- Auth mode ---
+# "cognito"  — Cognito SSO via Microsoft Entra ID / Azure AD (default, recommended)
+# "basic"    — HTTP Basic Auth (simpler, no Azure app registration required)
+auth_mode = "cognito"
+
+# ============================================================
+# Option A: Cognito SSO (auth_mode = "cognito")
+# ============================================================
 # Register a free app at https://portal.azure.com:
 #   1. App registrations → New registration
 #   2. Name: anything (e.g. "bedrock-chat-dev")
@@ -16,12 +23,19 @@ bedrock_model_id    = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 cognito_oidc_client_id     = "your-azure-app-client-id"
 cognito_oidc_client_secret = "your-azure-app-client-secret"
 
-# For BMO production, replace /common/ with the specific Entra ID tenant ID:
-# cognito_oidc_issuer = "https://login.microsoftonline.com/<bmo-tenant-id>/v2.0"
+# Use the specific tenant ID (not /common/) to avoid id_token issuer mismatch errors.
+# cognito_oidc_issuer = "https://login.microsoftonline.com/<tenant-id>/v2.0"
 cognito_oidc_issuer = "https://login.microsoftonline.com/common/v2.0"
 
 # Two-step deploy: leave empty on first apply.
 # After apply: copy the cloudfront_url output (without https://) here and re-apply.
 # Terraform will then register the real callback URL with the Cognito app client.
 cloudfront_domain = ""
+
+# ============================================================
+# Option B: HTTP Basic Auth (auth_mode = "basic")
+# ============================================================
+# No Azure/Cognito setup required. The browser shows a native login dialog.
+# basic_auth_username = "admin"
+# basic_auth_password = "change-me-in-production"
 

@@ -1,4 +1,6 @@
 resource "aws_cognito_user_pool" "app" {
+  count = local.cognito_enabled ? 1 : 0
+
   name = "${local.name_prefix}-pool"
 
   # Disable self-registration — users must come through the federated IdP.
@@ -32,12 +34,16 @@ resource "aws_cognito_user_pool" "app" {
 }
 
 resource "aws_cognito_user_pool_domain" "app" {
+  count = local.cognito_enabled ? 1 : 0
+
   domain       = "${local.name_prefix}-${random_string.suffix.result}"
-  user_pool_id = aws_cognito_user_pool.app.id
+  user_pool_id = aws_cognito_user_pool.app[0].id
 }
 
 resource "aws_cognito_identity_provider" "microsoft" {
-  user_pool_id  = aws_cognito_user_pool.app.id
+  count = local.cognito_enabled ? 1 : 0
+
+  user_pool_id  = aws_cognito_user_pool.app[0].id
   provider_name = "Microsoft"
   provider_type = "OIDC"
 
@@ -61,8 +67,10 @@ resource "aws_cognito_identity_provider" "microsoft" {
 # On first apply leave cloudfront_domain empty — a placeholder URL is used.
 # After first apply: set cloudfront_domain = <cloudfront_url output> and re-apply.
 resource "aws_cognito_user_pool_client" "app" {
+  count = local.cognito_enabled ? 1 : 0
+
   name         = "${local.name_prefix}-client"
-  user_pool_id = aws_cognito_user_pool.app.id
+  user_pool_id = aws_cognito_user_pool.app[0].id
 
   generate_secret                      = true
   allowed_oauth_flows_user_pool_client = true
@@ -77,7 +85,7 @@ resource "aws_cognito_user_pool_client" "app" {
     "https://${var.cloudfront_domain}/login"
   ] : ["https://placeholder.example.com/login"]
 
-  supported_identity_providers = [aws_cognito_identity_provider.microsoft.provider_name]
+  supported_identity_providers = [aws_cognito_identity_provider.microsoft[0].provider_name]
 
   token_validity_units {
     access_token  = "hours"
@@ -89,5 +97,5 @@ resource "aws_cognito_user_pool_client" "app" {
   id_token_validity      = 1
   refresh_token_validity = 1
 
-  depends_on = [aws_cognito_identity_provider.microsoft]
+  depends_on = [aws_cognito_identity_provider.microsoft[0]]
 }

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova AI • Chat Agent</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    .sidebar { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+    .message-ai { animation: fadeIn 0.3s ease-out forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
+  <!-- Top Navbar -->
+  <nav class="border-b border-zinc-800 bg-zinc-950 px-4 py-3 flex items-center justify-between z-50">
+    <div class="flex items-center gap-3">
+      <!-- Collapse Toggle -->
+      <button onclick="toggleSidebar()" 
+        class="lg:hidden p-2 hover:bg-zinc-900 rounded-xl text-zinc-400 hover:text-white transition">
+        <i class="fas fa-bars text-xl"></i>
+      </button>
+      
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xl">N</div>
+        <div class="font-semibold text-xl tracking-tight">Nova</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <button onclick="newChat()" 
+        class="flex items-center gap-2 px-5 py-2 bg-zinc-900 hover:bg-zinc-800 rounded-2xl text-sm font-medium transition">
+        <i class="fas fa-plus"></i>
+        <span class="hidden sm:inline">New Chat</span>
+      </button>
+      <div class="w-8 h-8 bg-zinc-700 rounded-full ring-2 ring-violet-500/30"></div>
+    </div>
+  </nav>
+
+  <div class="flex flex-1 overflow-hidden">
+    <!-- Collapsible Session Panel (Sidebar) -->
+    <div id="sidebar" class="sidebar w-72 border-r border-zinc-800 bg-zinc-950 flex flex-col lg:w-80">
+      <div class="p-4 border-b border-zinc-800">
+        <div class="text-xs uppercase tracking-widest text-zinc-500 mb-3 px-2">Sessions</div>
+        
+        <!-- Search -->
+        <div class="relative mb-4">
+          <input type="text" id="search" placeholder="Search sessions..." 
+            class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl py-2.5 px-4 text-sm focus:outline-none focus:border-violet-500">
+        </div>
+      </div>
+
+      <!-- Chat History List -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-1 custom-scroll">
+        <div onclick="loadChat(1)" class="group px-4 py-3 hover:bg-zinc-900 rounded-2xl cursor-pointer transition flex flex-col gap-1 active-chat">
+          <div class="font-medium text-sm line-clamp-1">Planning summer trip to Quebec City</div>
+          <div class="text-xs text-zinc-500">Yesterday • 8 messages</div>
+        </div>
+        
+        <div onclick="loadChat(2)" class="group px-4 py-3 hover:bg-zinc-900 rounded-2xl cursor-pointer transition flex flex-col gap-1">
+          <div class="font-medium text-sm line-clamp-1">Building modern AI chat UI ideas</div>
+          <div class="text-xs text-zinc-500">2 days ago • 24 messages</div>
+        </div>
+        
+        <div onclick="loadChat(3)" class="group px-4 py-3 hover:bg-zinc-900 rounded-2xl cursor-pointer transition flex flex-col gap-1">
+          <div class="font-medium text-sm line-clamp-1">Researching Grok 4 capabilities</div>
+          <div class="text-xs text-zinc-500">Mar 30 • 15 messages</div>
+        </div>
+      </div>
+
+      <!-- Footer of Sidebar -->
+      <div class="p-4 border-t border-zinc-800">
+        <button onclick="newChat()" 
+          class="w-full py-3 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 rounded-2xl text-sm font-medium transition">
+          <i class="fas fa-plus"></i> Start New Session
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Chat Area -->
+    <div class="flex-1 flex flex-col min-w-0">
+      <!-- Chat Header (when sidebar is collapsed) -->
+      <div class="hidden lg:flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-zinc-950">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleSidebar()" class="text-zinc-400 hover:text-white p-2 rounded-xl hover:bg-zinc-900">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <span class="text-sm text-zinc-400">Current Session</span>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div id="chat" class="flex-1 p-6 overflow-y-auto space-y-8 bg-zinc-950">
+        <!-- Messages will be added here by JS -->
+      </div>
+
+      <!-- Input Area -->
+      <div class="p-6 border-t border-zinc-800 bg-zinc-950">
+        <div class="max-w-4xl mx-auto">
+          <div class="relative">
+            <textarea id="input" rows="1" 
+              class="w-full bg-zinc-900 border border-zinc-700 focus:border-violet-500 rounded-3xl px-6 py-4 pr-20 resize-y min-h-[56px] max-h-[180px] text-base outline-none"
+              placeholder="Ask Nova anything..."></textarea>
+            
+            <button onclick="sendMessage()" 
+              class="absolute right-4 bottom-4 w-10 h-10 bg-gradient-to-br from-violet-500 to-fuchsia-500 hover:scale-105 rounded-2xl flex items-center justify-center transition-all active:scale-95">
+              <i class="fas fa-paper-plane text-white"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let sidebarOpen = true;
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      if (window.innerWidth < 1024) {
+        // Mobile behavior: toggle visibility
+        sidebar.classList.toggle('-translate-x-full');
+      } else {
+        // Desktop behavior: collapse to narrow or hide
+        if (sidebarOpen) {
+          sidebar.style.width = '0px';
+          sidebar.style.opacity = '0';
+        } else {
+          sidebar.style.width = '288px';
+          sidebar.style.opacity = '1';
+        }
+        sidebarOpen = !sidebarOpen;
+      }
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('input');
+      if (!input.value.trim()) return;
+
+      const chat = document.getElementById('chat');
+      chat.innerHTML += `
+        <div class="flex justify-end">
+          <div class="max-w-[70%] bg-zinc-800 px-5 py-3.5 rounded-3xl rounded-tr-none text-sm">
+            ${input.value}
+          </div>
+        </div>
+      `;
+      input.value = '';
+      chat.scrollTop = chat.scrollHeight;
+
+      // Simulate AI response
+      setTimeout(() => {
+        chat.innerHTML += `
+          <div class="flex gap-4 message-ai">
+            <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 flex items-center justify-center text-white text-2xl flex-shrink-0">✦</div>
+            <div class="max-w-[70%]">
+              <div class="text-sm font-medium mb-1">Nova</div>
+              <div class="text-zinc-300 text-[15px]">Got it! Here's a modern approach to the session panel...</div>
+            </div>
+          </div>
+        `;
+        chat.scrollTop = chat.scrollHeight;
+      }, 700);
+    }
+
+    function newChat() {
+      document.getElementById('chat').innerHTML = `
+        <div class="flex flex-col items-center justify-center h-full text-center text-zinc-400 py-20">
+          <div class="text-6xl mb-4">✦</div>
+          <p class="text-xl font-light">What would you like to explore today?</p>
+        </div>
+      `;
+    }
+
+    function loadChat(id) {
+      alert(`Loading session #${id}... (demo)`);
+      // In real app: load messages from backend/state
+    }
+
+    // Close sidebar on mobile when clicking outside (optional enhancement)
+    document.addEventListener('click', (e) => {
+      const sidebar = document.getElementById('sidebar');
+      if (window.innerWidth < 1024 && !sidebar.contains(e.target) && !e.target.closest('button')) {
+        sidebar.classList.add('-translate-x-full');
+      }
+    });
+  </script>
+</body>
+</html>
